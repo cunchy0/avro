@@ -122,36 +122,36 @@ def _is_timezone_aware_datetime(dt):
 
 
 _valid = {
-    'null': lambda s, d: d is None,
-    'boolean': lambda s, d: isinstance(d, bool),
-    'string': lambda s, d: isinstance(d, unicode),
-    'bytes': lambda s, d: ((isinstance(d, bytes)) or
+    'null': lambda s, d, r: d is None,
+    'boolean': lambda s, d, r: isinstance(d, bool),
+    'string': lambda s, d, r: isinstance(d, unicode),
+    'bytes': lambda s, d, r: ((isinstance(d, bytes)) or
                            (isinstance(d, Decimal) and
                             getattr(s, 'logical_type', None) == constants.DECIMAL)),
-    'int': lambda s, d: ((isinstance(d, (int, long))) and (INT_MIN_VALUE <= d <= INT_MAX_VALUE) or
+    'int': lambda s, d, r: ((isinstance(d, (int, long))) and (INT_MIN_VALUE <= d <= INT_MAX_VALUE) or
                          (isinstance(d, datetime.date) and
                           getattr(s, 'logical_type', None) == constants.DATE) or
                          (isinstance(d, datetime.time) and
                           getattr(s, 'logical_type', None) == constants.TIME_MILLIS)),
-    'long': lambda s, d: ((isinstance(d, (int, long))) and (LONG_MIN_VALUE <= d <= LONG_MAX_VALUE) or
+    'long': lambda s, d, r: ((isinstance(d, (int, long))) and (LONG_MIN_VALUE <= d <= LONG_MAX_VALUE) or
                           (isinstance(d, datetime.time) and
                            getattr(s, 'logical_type', None) == constants.TIME_MICROS) or
                           (isinstance(d, datetime.date) and
                            _is_timezone_aware_datetime(d) and
                            getattr(s, 'logical_type', None) in (constants.TIMESTAMP_MILLIS,
                                                                 constants.TIMESTAMP_MICROS))),
-    'float': lambda s, d: isinstance(d, (int, long, float)),
-    'fixed': lambda s, d: ((isinstance(d, bytes) and len(d) == s.size) or
+    'float': lambda s, d, r: isinstance(d, (int, long, float)),
+    'fixed': lambda s, d, r: ((isinstance(d, bytes) and len(d) == s.size) or
                            (isinstance(d, Decimal) and
                             getattr(s, 'logical_type', None) == constants.DECIMAL)),
-    'enum': lambda s, d: d in s.symbols,
+    'enum': lambda s, d, r: d in s.symbols,
 
-    'array': lambda s, d: isinstance(d, list) and all(validate(s.items, item) for item in d),
-    'map': lambda s, d: (isinstance(d, dict) and all(isinstance(key, unicode) for key in d) and
-                         all(validate(s.values, value) for value in d.values())),
-    'union': lambda s, d: any(validate(branch, d) for branch in s.schemas),
-    'record': lambda s, d: (isinstance(d, dict) and
-                            all(validate(f.type, d.get(f.name)) for f in s.fields) and
+    'array': lambda s, d, r: isinstance(d, list) and all(validate(s.items, item, r) for item in d),
+    'map': lambda s, d, r: (isinstance(d, dict) and all(isinstance(key, unicode) for key in d) and
+                         all(validate(s.values, value, r) for value in d.values())),
+    'union': lambda s, d, r: any(validate(branch, d, r) for branch in s.schemas),
+    'record': lambda s, d, r: (isinstance(d, dict) and
+                            all(validate(f.type, d.get(f.name), r) for f in s.fields) and
                             {f.name for f in s.fields}.issuperset(d.keys())),
 }
 _valid['double'] = _valid['float']
@@ -159,7 +159,7 @@ _valid['error_union'] = _valid['union']
 _valid['error'] = _valid['request'] = _valid['record']
 
 
-def validate(expected_schema, datum):
+def validate(expected_schema, datum, raise_on_error=False):
     """Determines if a python datum is an instance of a schema.
 
     Args:
@@ -180,15 +180,17 @@ def validate(expected_schema, datum):
             _DEBUG_VALIDATE_INDENT += 2
             if datum is not None and not datum:
                 print('{!s}<Empty>'.format(' ' * _DEBUG_VALIDATE_INDENT), file=sys.stderr)
-        result = _valid[expected_type](expected_schema, datum)
+        result = _valid[expected_type](expected_schema, datum, raise_on_error)
         if _DEBUG_VALIDATE:
             _DEBUG_VALIDATE_INDENT -= 2
             print('{!s}}} -> {!s}'.format(' ' * _DEBUG_VALIDATE_INDENT, result), file=sys.stderr)
     else:
-        result = _valid[expected_type](expected_schema, datum)
+        result = _valid[expected_type](expected_schema, datum, raise_on_error)
         if _DEBUG_VALIDATE:
             print('{!s}{!s}{!s}: {!s} -> {!s}'.format(' ' * _DEBUG_VALIDATE_INDENT,
                   expected_schema.type, name, type(datum).__name__, result), file=sys.stderr)
+        if raise_on_error and not result:
+            raise AvroTypeException(expected_schema, datum)
     return result
 
 
