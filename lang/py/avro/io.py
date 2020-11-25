@@ -165,6 +165,7 @@ def validate(expected_schema, datum, raise_on_error=False):
     Args:
       expected_schema: Schema to validate against.
       datum: Datum to validate.
+      raise_on_error: (Optional) Raises AvroTypeException when datum does not match schema
     Returns:
       True if the datum is an instance of the schema.
     """
