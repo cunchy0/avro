@@ -102,6 +102,16 @@ class AvroTypeException(schema.AvroException):
         schema.AvroException.__init__(self, fail_msg)
 
 
+class AvroTypeExceptionUnion(schema.AvroException):
+    """Raised when datum is not an example of a union."""
+
+    def __init__(self, expected_schema, datum):
+        pretty_union =',\n'.join(map(lambda x: str(x.fullname), expected_schema.schemas))
+        fail_msg = "The datum %s is not an example of the union:\n%s" \
+                   % (datum, pretty_union)
+        schema.AvroException.__init__(self, fail_msg)
+
+
 class SchemaResolutionException(schema.AvroException):
     def __init__(self, fail_msg, writers_schema=None, readers_schema=None):
         pretty_writers = json.dumps(json.loads(str(writers_schema)), indent=2)
@@ -183,7 +193,7 @@ def validate(expected_schema, datum, raise_on_error=False):
                 print('{!s}<Empty>'.format(' ' * _DEBUG_VALIDATE_INDENT), file=sys.stderr)
         result = _valid[expected_type](expected_schema, datum, raise_on_error)
         if raise_on_error and expected_type == 'union' and not result:
-            raise AvroTypeException(expected_schema, datum)
+            raise AvroTypeExceptionUnion(expected_schema, datum)
         if _DEBUG_VALIDATE:
             _DEBUG_VALIDATE_INDENT -= 2
             print('{!s}}} -> {!s}'.format(' ' * _DEBUG_VALIDATE_INDENT, result), file=sys.stderr)
