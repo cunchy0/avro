@@ -149,7 +149,7 @@ _valid = {
     'array': lambda s, d, r: isinstance(d, list) and all(validate(s.items, item, r) for item in d),
     'map': lambda s, d, r: (isinstance(d, dict) and all(isinstance(key, unicode) for key in d) and
                          all(validate(s.values, value, r) for value in d.values())),
-    'union': lambda s, d, r: any(validate(branch, d, r) for branch in s.schemas),
+    'union': lambda s, d, r: any(validate(branch, d, False) for branch in s.schemas),
     'record': lambda s, d, r: (isinstance(d, dict) and
                             all(validate(f.type, d.get(f.name), r) for f in s.fields) and
                             {f.name for f in s.fields}.issuperset(d.keys())),
@@ -182,6 +182,8 @@ def validate(expected_schema, datum, raise_on_error=False):
             if datum is not None and not datum:
                 print('{!s}<Empty>'.format(' ' * _DEBUG_VALIDATE_INDENT), file=sys.stderr)
         result = _valid[expected_type](expected_schema, datum, raise_on_error)
+        if raise_on_error and expected_type == 'union' and not result:
+            raise AvroTypeException(expected_schema, datum)
         if _DEBUG_VALIDATE:
             _DEBUG_VALIDATE_INDENT -= 2
             print('{!s}}} -> {!s}'.format(' ' * _DEBUG_VALIDATE_INDENT, result), file=sys.stderr)
