@@ -102,7 +102,7 @@ class AvroTypeException(schema.AvroException):
         schema.AvroException.__init__(self, fail_msg)
 
 
-class AvroTypeExceptionUnion(schema.AvroException):
+class AvroTypeExceptionUnion(AvroTypeException):
     """Raised when datum is not an example of a union."""
 
     def __init__(self, expected_schema, datum):
