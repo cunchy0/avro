@@ -23,7 +23,9 @@ from __future__ import absolute_import, division, print_function
 import sys
 
 import avro.errors
-from avro import ipc, protocol
+from avro import protocol, txipc
+from twisted.internet import defer, reactor
+from twisted.python.util import println
 
 MAIL_PROTOCOL_JSON = """\
 {"namespace": "example.proto",
@@ -57,8 +59,8 @@ SERVER_PORT = 9090
 
 
 def make_requestor(server_host, server_port, protocol):
-    client = ipc.HTTPTransceiver(SERVER_HOST, SERVER_PORT)
-    return ipc.Requestor(protocol, client)
+    client = txipc.TwistedHTTPTransceiver(SERVER_HOST, SERVER_PORT)
+    return txipc.TwistedRequestor(protocol, client)
 
 
 if __name__ == '__main__':
@@ -81,13 +83,24 @@ if __name__ == '__main__':
     params = {}
     params['message'] = message
 
+    requests = []
     # send the requests and print the result
     for msg_count in range(num_messages):
         requestor = make_requestor(SERVER_HOST, SERVER_PORT, MAIL_PROTOCOL)
-        result = requestor.request('send', params)
-        print("Result: " + result)
+        d = requestor.request('send', params)
+        d.addCallback(lambda result: println("Result: " + result))
+        requests.append(d)
+    results = defer.gatherResults(requests)
 
-    # try out a replay message
-    requestor = make_requestor(SERVER_HOST, SERVER_PORT, MAIL_PROTOCOL)
-    result = requestor.request('replay', dict())
-    print("Replay Result: " + result)
+    def replay_cb(result):
+        print("Replay Result: " + result)
+        reactor.stop()
+
+    def replay(_):
+        # try out a replay message
+        requestor = make_requestor(SERVER_HOST, SERVER_PORT, MAIL_PROTOCOL)
+        d = requestor.request('replay', dict())
+        d.addCallback(replay_cb)
+
+    results.addCallback(replay)
+    reactor.run()

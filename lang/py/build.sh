@@ -50,7 +50,7 @@ interop-data-generate() {
 interop-data-test() {
   mkdir -p avro/test/interop ../../build/interop/data
   cp -r ../../build/interop/data avro/test/interop
-  python3 -m unittest avro.test.test_datafile_interop
+  python -m unittest avro.test.test_datafile_interop
 }
 
 lint() {

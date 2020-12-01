@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
 # Licensed to the Apache Software Foundation (ASF) under one or more
 # contributor license agreements.  See the NOTICE file distributed with
@@ -25,6 +25,10 @@ java_tool() {
   java -jar "lang/java/tools/target/avro-tools-$VERSION.jar" "$@"
 }
 
+py_tool() {
+  PYTHONPATH=lang/py python2 -m avro.tool "$@"
+}
+
 py3_tool() {
   PYTHONPATH=lang/py3 python3 -m avro.tool "$@"
 }
@@ -32,8 +36,6 @@ py3_tool() {
 ruby_tool() {
   ruby -Ilang/ruby/lib lang/ruby/test/tool.rb "$@"
 }
-
-tools=( {java,py3,ruby}_tool )
 
 proto=share/test/schemas/simple.avpr
 
@@ -48,12 +50,12 @@ cleanup() {
 
 trap 'cleanup' EXIT
 
-for server in "${tools[@]}"; do
+for server in {java,py,py3,ruby}_tool; do
   for msgDir in share/test/interop/rpc/*; do
     msg="${msgDir##*/}"
     for c in "$msgDir/"*; do
       echo "TEST: $c"
-      for client in "${tools[@]}"; do
+      for client in {java,py,py3,ruby}_tool; do
         rm -rf "$portfile"
         "$server" rpcreceive 'http://127.0.0.1:0/' "$proto" "$msg" \
           -file "$c/response.avro" > "$portfile" &
