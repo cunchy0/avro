@@ -23,4 +23,7 @@ import pkgutil
 
 __all__ = ['schema', 'io', 'datafile', 'protocol', 'ipc', 'constants', 'timezones', 'codecs']
 
-__version__ = (pkgutil.get_data(__name__, 'VERSION.txt') or b'0.0.1+unknown').decode().strip()
+# Old version lookup, requiring text file
+# __version__ = (pkgutil.get_data(__name__, 'VERSION.txt') or b'0.0.1+unknown').decode().strip()
+
+__version__ = '1.10.2'
